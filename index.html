@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-title" content="Gym Log">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Protein &amp; Gym Log</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#121214">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: one-column phone app, max 480px, sticky top bar + bottom tab bar; calendar squares mirror the Setgraph look. */
+:root {
+  color-scheme: dark;
+  --bg: #121214;
+  --surface: #1c1c1f;
+  --cell: #2b2b30;
+  --cell-faint: #222226;
+  --line: #303036;
+  --fg: #f2f2f4;
+  --muted: #8e8e96;
+  --dim: #5d5d65;
+  --green: #5fd068;
+  --green-ink: #0e2a12;
+  --green-soft: rgba(95, 208, 104, .16);
+  --warn: #f2b84b;
+  --red: #ff5a4f;
+  --red-ink: #2b0906;
+  --danger: #ff6b5e;
+  --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-num: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
+  --r: 14px;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--f-body); font-size: 16px; line-height: 1.4;
+  -webkit-tap-highlight-color: transparent;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+
+.app { max-width: 480px; margin: 0 auto; min-height: 100%;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 calc(84px + env(safe-area-inset-bottom, 0px));
+}
+
+/* top bar */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  display: grid; grid-template-columns: 72px 1fr 72px; align-items: center; padding-block: 12px 10px; }
+.top h1 { margin: 0; text-align: center; font-size: 19px; font-weight: 600; text-wrap: balance; }
+.top .link { background: none; border: 0; color: var(--green); font-size: 17px; padding: 6px 0; }
+.top .link.right { text-align: right; }
+.top .link[hidden] { display: none; }
+.navbtn { background: none; border: 0; color: var(--green); font-size: 26px; line-height: 1; padding: 4px 8px; }
+.titlewrap { display: flex; align-items: center; justify-content: center; gap: 4px; min-width: 0; }
+
+.syncnote { font-size: 13px; color: var(--muted); text-align: center; margin: 0 0 10px; }
+.syncnote b { color: var(--warn); font-weight: 600; }
+
+/* cards */
+.card { background: var(--surface); border-radius: 18px; padding: 16px; }
+.stack { display: grid; gap: 12px; }
+.label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+/* protein hero */
+.hero .big { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
+.hero .big .v { font-size: 56px; font-weight: 700; line-height: 1; }
+.hero .big .g { font-size: 22px; color: var(--muted); }
+.bar { height: 10px; border-radius: 6px; background: var(--cell); overflow: hidden; margin-top: 12px; }
+.bar > i { display: block; height: 100%; width: 0; background: var(--green); border-radius: 6px; transition: width .3s ease; }
+.hero .sub { margin-top: 8px; color: var(--muted); font-size: 15px; }
+.hero .sub.done { color: var(--green); font-weight: 600; }
+
+.chips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.chip { background: var(--cell); border: 0; border-radius: 12px; padding: 12px 0; font-weight: 600; font-size: 16px; }
+.chip:active { background: var(--green-soft); }
+
+/* trained toggle */
+.trained { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.tbtn { border: 0; border-radius: var(--r); padding: 16px 8px; font-size: 17px; font-weight: 600; background: var(--cell); color: var(--muted); }
+.tbtn[aria-pressed="true"].yes { background: var(--green); color: var(--green-ink); }
+.tbtn[aria-pressed="true"].no { background: #4a4a52; color: var(--fg); }
+.tbtn[aria-pressed="true"].skip { background: var(--red); color: var(--red-ink); }
+.tbtn { padding: 16px 4px; }
+
+/* add food form */
+.form { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.form .full { grid-column: 1 / -1; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field span { font-size: 12px; color: var(--muted); }
+.field input { width: 100%; min-width: 0; background: var(--cell); border: 1px solid transparent; border-radius: 10px; padding: 11px 10px; font-size: 17px; }
+.field input:focus { border-color: var(--green); outline: none; }
+.primary { background: var(--green); color: var(--green-ink); border: 0; border-radius: 12px; padding: 13px; font-weight: 700; font-size: 17px; }
+.primary:disabled { opacity: .4; }
+.ghost:disabled { opacity: .35; cursor: default; }
+.addrow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: stretch; }
+.addrow .primary, .addrow .ghost { padding: 0 18px; }
+.addrow input { font-size: 22px; font-weight: 600; padding: 12px; }
+.ghost { background: var(--cell); border: 0; border-radius: 12px; padding: 12px; font-weight: 600; }
+.err { color: var(--danger); font-size: 14px; min-height: 0; margin: 0; }
+
+.macros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.macro { background: var(--cell-faint); border-radius: 12px; padding: 10px; min-width: 0; }
+.macro .v { font-size: 22px; font-weight: 700; }
+.macro .of { font-size: 13px; color: var(--muted); }
+
+.entries { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.entries li { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 10px 2px; border-top: 1px solid var(--line); }
+.entries li:first-child { border-top: 0; }
+.entries .name { min-width: 0; overflow-wrap: anywhere; }
+.entries .name small { display: block; color: var(--muted); font-size: 13px; }
+.entries .p { font-weight: 700; }
+.del { background: none; border: 0; color: var(--dim); font-size: 22px; line-height: 1; padding: 4px 8px; }
+.del:hover { color: var(--danger); }
+.empty { color: var(--muted); font-size: 15px; margin: 0; }
+
+/* calendar */
+.weekhead { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center; font-size: 13px; color: var(--muted);
+  padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.monthname { font-size: 22px; font-weight: 600; margin: 4px 0 12px 4px; }
+.grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.day { position: relative; aspect-ratio: 1; max-width: 100%; border: 0; border-radius: 12px; background: var(--cell);
+  color: #9a9aa2; font-family: var(--f-num); font-size: 20px; font-weight: 600; display: grid; place-items: center; padding: 0; }
+.day.blank { background: none; pointer-events: none; }
+.day.future { background: var(--cell-faint); color: var(--dim); }
+.day.on { background: var(--green); color: #10210f; }
+.day.today { box-shadow: inset 0 0 0 2px var(--fg); }
+.day.on.today { box-shadow: inset 0 0 0 2px #10210f; }
+.day.skip { background: var(--red); color: var(--red-ink); }
+.day.skip.today { box-shadow: inset 0 0 0 2px var(--red-ink); }
+.day.skip .pbar { background: rgba(43,9,6,.2); }
+.day.skip .pbar > i { background: var(--red-ink); }
+.day .pbar { position: absolute; left: 18%; right: 18%; bottom: 12%; height: 3px; border-radius: 2px; background: rgba(255,255,255,.12); overflow: hidden; }
+.day .pbar > i { display: block; height: 100%; background: #e8e8ec; }
+.day.on .pbar { background: rgba(16,33,15,.18); }
+.day.on .pbar > i { background: #10210f; }
+
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stat { background: var(--surface); border-radius: 14px; padding: 12px; min-width: 0; }
+.stat .v { font-size: 28px; font-weight: 700; line-height: 1.1; }
+.stat .k { font-size: 12px; color: var(--muted); }
+.stat.g .v { color: var(--green); }
+.stat.r .v { color: var(--red); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); margin-top: 14px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 14px; border-radius: 4px; background: var(--cell); display: inline-block; }
+.sw.on { background: var(--green); }
+.sw.skip { background: var(--red); }
+.sw.bar { background: none; width: 16px; height: 3px; border-radius: 2px; background: #e8e8ec; }
+
+/* year */
+.months { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 440px) { .months { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.mini { background: var(--surface); border: 0; border-radius: 16px; padding: 12px; text-align: left; min-width: 0; display: flex; flex-direction: column; justify-content: flex-start; }
+.mini .mh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.mini .mh b { font-size: 16px; }
+.mini .mh span { font-size: 12px; color: var(--green); font-weight: 600; }
+.mini .mh span.zero { color: var(--dim); }
+.mg { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 3px; }
+.mg i { aspect-ratio: 1; border-radius: 3px; background: var(--cell); }
+.mg i.blank { background: none; }
+.mg i.future { background: var(--cell-faint); }
+.mg i.on { background: var(--green); }
+.mg i.skip { background: var(--red); }
+.mini .mf { margin-top: 8px; font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px; }
+.mini .mf .g { color: var(--green); font-weight: 600; }
+.mini .mf .r { color: var(--red); font-weight: 600; }
+.mg i.today { box-shadow: 0 0 0 1.5px var(--fg); }
+
+/* tab bar */
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: rgba(18,18,20,.94);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--line);
+  padding: 8px max(16px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.tabs nav { max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.tab { background: none; border: 0; color: var(--muted); padding: 6px 0; border-radius: 10px; font-size: 13px; font-weight: 600; display: grid; justify-items: center; gap: 3px; }
+.tab svg { width: 22px; height: 22px; }
+.tab[aria-current="page"] { color: var(--green); }
+
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); z-index: 20;
+  background: #e9e9ee; color: #121214; padding: 10px 16px; border-radius: 12px; font-weight: 600; font-size: 15px; max-width: calc(100% - 32px); }
+
+.setrow { display: grid; grid-template-columns: 1fr 110px; align-items: center; gap: 12px; padding: 8px 0; }
+.setrow label { min-width: 0; }
+.setrow label small { display: block; color: var(--muted); font-size: 13px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.seg button { background: var(--cell); border: 0; border-radius: 10px; padding: 10px 0; font-weight: 600; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--green); color: var(--green-ink); }
+.help { color: var(--muted); font-size: 14px; margin: 0; }
+.help b { color: var(--fg); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <span></span>
+    <div class="titlewrap">
+      <button class="navbtn" id="prevBtn" type="button" aria-label="Previous">‹</button>
+      <h1 id="title" class="num">Today</h1>
+      <button class="navbtn" id="nextBtn" type="button" aria-label="Next">›</button>
+    </div>
+    <button class="link right" id="todayBtn" type="button">Today</button>
+  </header>
+  <p class="syncnote" id="syncNote" hidden></p>
+
+  <!-- DAY -->
+  <section id="view-day" class="stack" aria-label="Day log">
+    <div class="card hero">
+      <div class="label">Protein</div>
+      <div class="big num"><span class="v" id="pTotal">0</span><span class="g" id="pGoal">/ 160 g</span></div>
+      <div class="bar"><i id="pBar"></i></div>
+      <div class="sub" id="pSub">160 g to go</div>
+    </div>
+
+    <form class="card stack" id="addForm" autocomplete="off" novalidate>
+      <label class="label" for="fP">Add protein (grams)</label>
+      <div class="addrow field">
+        <input id="fP" inputmode="decimal" enterkeyhint="done" placeholder="e.g. 35" aria-describedby="fErr">
+        <button class="primary" type="submit" id="addBtn">Add</button>
+        <button class="ghost" type="button" id="undoBtn" disabled>Undo</button>
+      </div>
+      <p class="err" id="fErr" hidden></p>
+    </form>
+
+    <div class="card stack">
+      <div class="label">Gym today?</div>
+      <div class="trained" role="group" aria-label="Gym today">
+        <button class="tbtn yes" type="button" id="stTrained" aria-pressed="false">Trained</button>
+        <button class="tbtn no" type="button" id="stRest" aria-pressed="false">Rest day</button>
+        <button class="tbtn skip" type="button" id="stSkipped" aria-pressed="false">Skipped</button>
+      </div>
+    </div>
+
+    <div class="card stack">
+      <div class="label">Logged today</div>
+      <ul class="entries" id="entries"></ul>
+      <p class="empty" id="entriesEmpty">Nothing logged yet. Type how many grams you ate and tap Add.</p>
+    </div>
+  </section>
+
+  <!-- MONTH -->
+  <section id="view-month" hidden aria-label="Month view">
+    <div class="stats" id="mStats"></div>
+    <div class="card" style="margin-top:12px">
+      <div class="weekhead" id="weekhead"></div>
+      <div class="grid" id="monthGrid"></div>
+      <div class="legend">
+        <span><i class="sw on"></i>Trained</span>
+        <span><i class="sw"></i>Rest</span>
+        <span><i class="sw skip"></i>Skipped</span>
+        <span><i class="sw bar"></i>Protein vs goal</span>
+      </div>
+    </div>
+    <p class="help" style="margin-top:12px">Tap a day to log or edit it.</p>
+  </section>
+
+  <!-- YEAR -->
+  <section id="view-year" hidden aria-label="Year view">
+    <div class="stats" id="yStats"></div>
+    <div class="months" id="months" style="margin-top:12px"></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="view-settings" hidden class="stack" aria-label="Goals and settings">
+    <form class="card" id="goalForm" novalidate>
+      <div class="label" style="margin-bottom:6px">Daily goal</div>
+      <div class="setrow"><label for="gP">Protein<small>grams per day</small></label><div class="field"><input id="gP" inputmode="decimal"></div></div>
+      <p class="err" id="gErr" hidden></p>
+      <button class="primary" type="submit" style="width:100%;margin-top:8px">Save goal</button>
+    </form>
+    <div class="card">
+      <div class="label" style="margin-bottom:10px">Week starts on</div>
+      <div class="seg"><button type="button" id="ws0" aria-pressed="true">Sunday</button><button type="button" id="ws1" aria-pressed="false">Monday</button></div>
+    </div>
+    <div class="card stack">
+      <div class="label">Put it on your phone</div>
+      <p class="help"><b>iPhone:</b> open this page in Safari, tap Share (the square with the up arrow), then <b>Add to Home Screen</b>.</p>
+      <p class="help"><b>Android:</b> open it in Chrome, tap ⋮, then <b>Add to Home screen</b>.</p>
+      <p class="help" id="storageHelp"></p>
+    </div>
+  </section>
+</div>
+
+<div class="tabs"><nav aria-label="Views">
+  <button class="tab" type="button" data-view="day" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Log</button>
+  <button class="tab" type="button" data-view="month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Month</button>
+  <button class="tab" type="button" data-view="year"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="5" height="5" rx="1.2"/><rect x="9.5" y="3" width="5" height="5" rx="1.2"/><rect x="16" y="3" width="5" height="5" rx="1.2"/><rect x="3" y="9.5" width="5" height="5" rx="1.2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1.2"/><rect x="16" y="9.5" width="5" height="5" rx="1.2"/><rect x="3" y="16" width="5" height="5" rx="1.2"/><rect x="9.5" y="16" width="5" height="5" rx="1.2"/><rect x="16" y="16" width="5" height="5" rx="1.2"/></svg>Year</button>
+  <button class="tab" type="button" data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/></svg>Goals</button>
+</nav></div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const DOW = ["S","M","T","W","T","F","S"];
+  const DOW_LONG = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const LS_KEY = "protein-gym-log-v1";
+  const DEFAULT_SETTINGS = { protein: 160, weekStart: 0 };
+  const STATUSES = ["trained", "rest", "skipped"];
+
+  // ---------- dates (always local time, never UTC) ----------
+  const pad = (n) => String(n).padStart(2, "0");
+  const keyOf = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
+  const keyOfDate = (dt) => keyOf(dt.getFullYear(), dt.getMonth(), dt.getDate());
+  const parseKey = (k) => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+  const daysIn = (y, m) => new Date(y, m + 1, 0).getDate();
+  const todayKey = () => keyOfDate(new Date());
+  const addDays = (k, n) => { const d = parseKey(k); d.setDate(d.getDate() + n); return keyOfDate(d); };
+
+  // ---------- state ----------
+  const state = {
+    view: "day",
+    dayKey: todayKey(),
+    ym: { y: new Date().getFullYear(), m: new Date().getMonth() },
+    year: new Date().getFullYear(),
+    days: {},            // key -> { status: "trained"|"rest"|"skipped"|"", entries: [{p,t}] }
+    settings: { ...DEFAULT_SETTINGS },
+  };
+
+  // ---------- numbers ----------
+  const r1 = (x) => Math.round(x * 10) / 10;
+  const fmt = (x) => { const v = r1(x); return Number.isInteger(v) ? String(v) : v.toFixed(1); };
+  function parseAmount(s) {
+    s = String(s ?? "").trim().replace(",", ".");
+    if (s === "") return 0;
+    if (!/^\d*\.?\d+$|^\d+\.$/.test(s)) return NaN;
+    const v = parseFloat(s);
+    return v >= 0 && v <= 2000 ? r1(v) : NaN;
+  }
+  function totals(day) {
+    let p = 0;
+    for (const e of day?.entries || []) p += +e.p || 0;
+    return { p: r1(p) };
+  }
+  // Older saves used `trained: true`; read those as the "trained" status.
+  function normDay(v) {
+    v = v || {};
+    const status = STATUSES.includes(v.status) ? v.status : v.trained ? "trained" : "";
+    const entries = Array.isArray(v.entries) ? v.entries.map((e) => ({ p: r1(+e.p || 0), t: +e.t || 0 })).filter((e) => e.p > 0) : [];
+    return { status, entries };
+  }
+  const getDay = (k) => state.days[k] || { status: "", entries: [] };
+  const hasData = (d) => !!d && (!!d.status || (d.entries && d.entries.length > 0));
+
+  // ---------- storage backends ----------
+  // Cloud (db capability, private to the signed-in person) when available; this-device storage otherwise.
+  const backend = {
+    mode: "local", db: null, uid: null,
+    pending: new Map(),     // key -> latest unsaved body (null = delete)
+    inflight: new Set(),
+    lsLoad() {
+      try { const raw = localStorage.getItem(LS_KEY); if (!raw) return; const o = JSON.parse(raw);
+        if (o && typeof o === "object") { state.days = {}; for (const [k, v] of Object.entries(o.days || {})) { const d = normDay(v); if (hasData(d)) state.days[k] = d; } state.settings = { ...DEFAULT_SETTINGS, ...(o.settings || {}) }; }
+      } catch (e) {}
+    },
+    lsSave() { try { localStorage.setItem(LS_KEY, JSON.stringify({ days: state.days, settings: state.settings })); } catch (e) {} },
+    daysPath() { return `data/users/${this.uid}/profile/days`; },
+    settingsPath() { return `data/users/${this.uid}/profile`; },
+    saveDay(k) {
+      const d = state.days[k];
+      const body = hasData(d) ? { date: k, status: d.status, trained: d.status === "trained", entries: d.entries.map((e) => ({ ...e })) } : null;
+      if (!hasData(d)) delete state.days[k];
+      this.lsSave();
+      if (this.mode !== "cloud") return;
+      this.pending.set(k, body);
+      this.flush(k);
+    },
+    async flush(k) {
+      if (this.inflight.has(k) || !this.pending.has(k)) return;
+      const body = this.pending.get(k); this.pending.delete(k); this.inflight.add(k);
+      try {
+        const ref = this.db.collection(this.daysPath()).doc(k);
+        if (body) await ref.set(body); else await ref.delete();
+      } catch (e) {
+        toast("Couldn't save that change. Check your connection and try again.");
+        if (!this.pending.has(k)) this.pending.set(k, body);
+        this.inflight.delete(k);
+        setTimeout(() => this.flush(k), 4000);
+        return;
+      }
+      this.inflight.delete(k);
+      if (this.pending.has(k)) this.flush(k);
+    },
+    async saveSettings() {
+      this.lsSave();
+      if (this.mode !== "cloud") return;
+      try { await this.db.doc(this.settingsPath()).set({ settings: { ...state.settings } }); }
+      catch (e) { toast("Couldn't save your goals. Check your connection and try again."); }
+    },
+    busy(k) { return this.pending.has(k) || this.inflight.has(k); },
+    async init() {
+      this.lsLoad();
+      if (!(window.claude && typeof window.claude.use === "function")) return;
+      let db = null, user = null;
+      try { [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]); } catch (e) { return; }
+      if (!db || !user) return;
+      let uid = null; try { uid = await user.id(); } catch (e) {}
+      if (!uid) return;
+      this.db = db; this.uid = uid; this.mode = "cloud";
+      db.collection(this.daysPath()).orderBy("date", "desc").limit(1000).onSnapshot((snap) => {
+        const seen = new Set();
+        for (const doc of snap.docs) {
+          const k = doc.id; seen.add(k);
+          if (this.busy(k)) continue;
+          const d = normDay(doc.data());
+          if (hasData(d)) state.days[k] = d; else delete state.days[k];
+        }
+        for (const k of Object.keys(state.days)) if (!seen.has(k) && !this.busy(k)) delete state.days[k];
+        this.lsSave(); render();
+      }, () => { setSync("err"); });
+      db.doc(this.settingsPath()).onSnapshot((snap) => {
+        const v = snap.exists ? snap.data() : null;
+        if (v && v.settings) { state.settings = { ...DEFAULT_SETTINGS, ...v.settings }; this.lsSave(); fillGoalForm(); render(); }
+      }, () => {});
+      setSync("cloud"); render();
+    },
+  };
+
+  function setSync(kind) {
+    const n = $("syncNote"), h = $("storageHelp");
+    if (kind === "cloud") { n.hidden = true; h.textContent = "Your log is saved to your Claude account, so it shows up on every device you're signed in on."; }
+    else if (kind === "err") { n.hidden = false; n.innerHTML = "<b>Not syncing.</b> Changes are kept on this device for now."; }
+    else { n.hidden = true; h.textContent = "Your log is saved on this phone. Use the app from your home screen icon so it always opens the same saved log."; }
+  }
+
+  // ---------- toast ----------
+  let toastTimer = 0;
+  function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 2600); }
+
+  // ---------- actions ----------
+  function mutateDay(k, fn) {
+    const cur = getDay(k);
+    const d = { status: cur.status, entries: cur.entries.slice() };
+    fn(d); state.days[k] = d; backend.saveDay(k); render();
+  }
+  // Undo history for protein, kept per day for this visit: each item is the entry list before a change.
+  const undo = {};
+  function changeEntries(k, fn) {
+    (undo[k] = undo[k] || []).push(getDay(k).entries.slice());
+    if (undo[k].length > 50) undo[k].shift();
+    mutateDay(k, (d) => fn(d.entries));
+  }
+  function undoLast() {
+    const k = state.dayKey, stack = undo[k];
+    if (!stack || !stack.length) return;
+    const prev = stack.pop(), before = totals(getDay(k)).p;
+    mutateDay(k, (d) => { d.entries = prev; });
+    const diff = r1(before - totals(getDay(k)).p);
+    toast(diff > 0 ? `Undid ${fmt(diff)} g` : diff < 0 ? `Put back ${fmt(-diff)} g` : "Undone");
+  }
+  function setStatus(st) {
+    mutateDay(state.dayKey, (d) => { d.status = d.status === st ? "" : st; });
+  }
+
+  // ---------- render ----------
+  function render() {
+    for (const v of ["day", "month", "year", "settings"]) $("view-" + v).hidden = state.view !== v;
+    document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-current", b.dataset.view === state.view ? "page" : "false"));
+    const nav = state.view !== "settings";
+    $("prevBtn").hidden = $("nextBtn").hidden = !nav;
+    $("todayBtn").hidden = !nav;
+    if (state.view === "day") renderDay();
+    else if (state.view === "month") renderMonth();
+    else if (state.view === "year") renderYear();
+    else $("title").textContent = "Goals";
+  }
+
+  function renderDay() {
+    const k = state.dayKey, dt = parseKey(k), tk = todayKey();
+    const label = k === tk ? "Today" : k === addDays(tk, -1) ? "Yesterday" : `${DOW_LONG[dt.getDay()]}, ${MONTHS[dt.getMonth()].slice(0, 3)} ${dt.getDate()}`;
+    $("title").textContent = k === tk || k === addDays(tk, -1) ? `${label}, ${MONTHS[dt.getMonth()].slice(0, 3)} ${dt.getDate()}` : label + (dt.getFullYear() !== new Date().getFullYear() ? ` ${dt.getFullYear()}` : "");
+    const day = getDay(k), t = totals(day), s = state.settings, goal = +s.protein || 0;
+    $("pTotal").textContent = fmt(t.p);
+    $("pGoal").textContent = goal ? `/ ${fmt(goal)} g` : "g";
+    $("pBar").style.width = goal ? Math.min(100, (t.p / goal) * 100) + "%" : "0%";
+    const sub = $("pSub");
+    if (!goal) { sub.textContent = "Set a protein goal in Goals."; sub.className = "sub"; }
+    else if (t.p >= goal) { sub.textContent = t.p > goal ? `Goal hit, ${fmt(t.p - goal)} g over` : "Goal hit"; sub.className = "sub done"; }
+    else { sub.textContent = `${fmt(goal - t.p)} g to go`; sub.className = "sub"; }
+
+    $("stTrained").setAttribute("aria-pressed", String(day.status === "trained"));
+    $("stRest").setAttribute("aria-pressed", String(day.status === "rest"));
+    $("stSkipped").setAttribute("aria-pressed", String(day.status === "skipped"));
+    $("undoBtn").disabled = !(undo[k] && undo[k].length);
+
+    const ul = $("entries"); ul.textContent = "";
+    day.entries.forEach((e, i) => {
+      const li = document.createElement("li");
+      const name = document.createElement("div"); name.className = "name";
+      name.textContent = e.t ? new Date(e.t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Protein";
+      const p = document.createElement("div"); p.className = "p num"; p.textContent = `${fmt(e.p)} g`;
+      const del = document.createElement("button"); del.className = "del"; del.type = "button"; del.textContent = "×";
+      del.setAttribute("aria-label", `Remove ${fmt(e.p)} g`);
+      del.addEventListener("click", () => changeEntries(k, (list) => list.splice(i, 1)));
+      li.append(name, p, del); ul.appendChild(li);
+    });
+    $("entriesEmpty").hidden = day.entries.length > 0;
+  }
+
+  function monthCells(y, m) {
+    const first = new Date(y, m, 1).getDay();
+    const lead = (first - state.settings.weekStart + 7) % 7;
+    const out = [];
+    for (let i = 0; i < lead; i++) out.push(null);
+    for (let d = 1; d <= daysIn(y, m); d++) out.push(d);
+    return out;
+  }
+  function monthStats(y, m) {
+    const tk = todayKey(), goal = +state.settings.protein || 0;
+    let trained = 0, skipped = 0, hit = 0, pSum = 0, pDays = 0;
+    for (let d = 1; d <= daysIn(y, m); d++) {
+      const k = keyOf(y, m, d); if (k > tk) break;
+      const day = state.days[k]; if (!day) continue;
+      if (day.status === "trained") trained++;
+      if (day.status === "skipped") skipped++;
+      const t = totals(day);
+      if (day.entries.length) { pSum += t.p; pDays++; if (goal && t.p >= goal) hit++; }
+    }
+    return { trained, skipped, hit, avg: pDays ? pSum / pDays : 0, pDays };
+  }
+  function statTiles(el, items) {
+    el.textContent = "";
+    for (const [v, k, tone] of items) {
+      const d = document.createElement("div"); d.className = "stat" + (tone ? " " + tone : "");
+      d.innerHTML = `<div class="v num"></div><div class="k"></div>`;
+      d.firstChild.textContent = v; d.lastChild.textContent = k; el.appendChild(d);
+    }
+  }
+
+  function renderMonth() {
+    const { y, m } = state.ym, tk = todayKey(), goal = +state.settings.protein || 0;
+    $("title").textContent = `${MONTHS[m]} ${y}`;
+    const ws = state.settings.weekStart;
+    $("weekhead").innerHTML = Array.from({ length: 7 }, (_, i) => `<span>${DOW[(i + ws) % 7]}</span>`).join("");
+    const g = $("monthGrid"); g.textContent = "";
+    for (const d of monthCells(y, m)) {
+      const b = document.createElement("button"); b.type = "button";
+      if (d === null) { b.className = "day blank"; b.tabIndex = -1; b.setAttribute("aria-hidden", "true"); g.appendChild(b); continue; }
+      const k = keyOf(y, m, d), day = state.days[k], t = totals(day);
+      b.className = "day" + (day?.status === "trained" ? " on" : day?.status === "skipped" ? " skip" : "") + (k > tk ? " future" : "") + (k === tk ? " today" : "");
+      b.textContent = d;
+      if (day && day.entries.length && goal) {
+        const bar = document.createElement("span"); bar.className = "pbar";
+        const i = document.createElement("i"); i.style.width = Math.min(100, (t.p / goal) * 100) + "%";
+        bar.appendChild(i); b.appendChild(bar);
+      }
+      b.setAttribute("aria-label", `${MONTHS[m]} ${d}${day?.status ? ", " + (day.status === "rest" ? "rest day" : day.status) : ""}${day?.entries.length ? `, ${fmt(t.p)} g protein` : ""}`);
+      b.addEventListener("click", () => { state.dayKey = k; setView("day"); });
+      g.appendChild(b);
+    }
+    const s = monthStats(y, m);
+    statTiles($("mStats"), [
+      [String(s.trained), s.trained === 1 ? "day trained" : "days trained", "g"],
+      [String(s.skipped), s.skipped === 1 ? "day skipped" : "days skipped", "r"],
+      [String(s.hit), "protein goal hit"],
+    ]);
+  }
+
+  function renderYear() {
+    const y = state.year, tk = todayKey();
+    $("title").textContent = String(y);
+    const wrap = $("months"); wrap.textContent = "";
+    let trained = 0, skipped = 0, hit = 0;
+    for (let m = 0; m < 12; m++) {
+      const s = monthStats(y, m); trained += s.trained; skipped += s.skipped; hit += s.hit;
+      const btn = document.createElement("button"); btn.type = "button"; btn.className = "mini";
+      btn.setAttribute("aria-label", `${MONTHS[m]} ${y}: ${s.trained} trained, ${s.skipped} skipped`);
+      const head = document.createElement("div"); head.className = "mh";
+      const b = document.createElement("b"); b.textContent = MONTHS[m].slice(0, 3);
+      head.append(b);
+      const mg = document.createElement("div"); mg.className = "mg";
+      let html = "";
+      for (const d of monthCells(y, m)) {
+        if (d === null) { html += `<i class="blank"></i>`; continue; }
+        const k = keyOf(y, m, d);
+        const st = state.days[k]?.status;
+        html += `<i class="${st === "trained" ? "on" : st === "skipped" ? "skip" : ""}${k > tk ? " future" : ""}${k === tk ? " today" : ""}"></i>`;
+      }
+      mg.innerHTML = html;
+      const foot = document.createElement("div"); foot.className = "mf num";
+      const fg = document.createElement("span"); fg.className = s.trained ? "g" : ""; fg.textContent = `${s.trained} trained`;
+      foot.appendChild(fg);
+      if (s.skipped) { const fr = document.createElement("span"); fr.className = "r"; fr.textContent = `${s.skipped} skipped`; foot.appendChild(fr); }
+      btn.append(head, mg, foot);
+      btn.addEventListener("click", () => { state.ym = { y, m }; setView("month"); });
+      wrap.appendChild(btn);
+    }
+    statTiles($("yStats"), [
+      [String(trained), trained === 1 ? "day trained" : "days trained", "g"],
+      [String(skipped), skipped === 1 ? "day skipped" : "days skipped", "r"],
+      [String(hit), "protein goal hit"],
+    ]);
+  }
+
+  function setView(v) { state.view = v; render(); window.scrollTo(0, 0); }
+
+  function fillGoalForm() {
+    const s = state.settings;
+    if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#goalForm")) return;
+    $("gP").value = s.protein ?? "";
+    $("ws0").setAttribute("aria-pressed", String(s.weekStart === 0)); $("ws1").setAttribute("aria-pressed", String(s.weekStart === 1));
+  }
+
+  // ---------- wiring ----------
+  document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {
+    if (b.dataset.view === "month" && state.view === "day") { const d = parseKey(state.dayKey); state.ym = { y: d.getFullYear(), m: d.getMonth() }; }
+    if (b.dataset.view === "year" && state.view === "month") state.year = state.ym.y;
+    setView(b.dataset.view);
+  }));
+  function step(n) {
+    if (state.view === "day") state.dayKey = addDays(state.dayKey, n);
+    else if (state.view === "month") { let { y, m } = state.ym; m += n; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } state.ym = { y, m }; }
+    else if (state.view === "year") state.year += n;
+    render();
+  }
+  $("prevBtn").addEventListener("click", () => step(-1));
+  $("nextBtn").addEventListener("click", () => step(1));
+  $("todayBtn").addEventListener("click", () => {
+    const now = new Date();
+    state.dayKey = todayKey(); state.ym = { y: now.getFullYear(), m: now.getMonth() }; state.year = now.getFullYear(); render();
+  });
+
+  $("stTrained").addEventListener("click", () => setStatus("trained"));
+  $("stRest").addEventListener("click", () => setStatus("rest"));
+  $("stSkipped").addEventListener("click", () => setStatus("skipped"));
+  $("undoBtn").addEventListener("click", undoLast);
+
+  $("addForm").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const p = parseAmount($("fP").value), err = $("fErr");
+    if (Number.isNaN(p)) { err.textContent = "Type the grams as a number, for example 35 or 12.5."; err.hidden = false; return; }
+    if (p <= 0) { err.textContent = "Type how many grams of protein, then tap Add."; err.hidden = false; return; }
+    err.hidden = true;
+    changeEntries(state.dayKey, (list) => list.push({ p, t: Date.now() }));
+    $("fP").value = "";
+    toast(`Added ${fmt(p)} g protein`);
+  });
+
+  $("goalForm").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const p = parseAmount($("gP").value), err = $("gErr");
+    if (Number.isNaN(p) || p <= 0) { err.textContent = "Enter a protein goal in grams, for example 160."; err.hidden = false; return; }
+    err.hidden = true;
+    state.settings = { ...state.settings, protein: p };
+    document.activeElement && document.activeElement.blur && document.activeElement.blur();
+    backend.saveSettings(); fillGoalForm(); render(); toast("Goal saved");
+  });
+  for (const ws of [0, 1]) $("ws" + ws).addEventListener("click", () => {
+    state.settings = { ...state.settings, weekStart: ws }; backend.saveSettings(); fillGoalForm(); render();
+  });
+
+  // roll "today" over at midnight if the app is left open
+  let lastToday = todayKey();
+  setInterval(() => { const t = todayKey(); if (t !== lastToday) { if (state.dayKey === lastToday) state.dayKey = t; lastToday = t; render(); } }, 30000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { const t = todayKey(); if (t !== lastToday) { if (state.dayKey === lastToday) state.dayKey = t; lastToday = t; render(); } } });
+
+  backend.lsLoad(); fillGoalForm(); render();
+  backend.init().then(() => { if (backend.mode === "cloud") fillGoalForm(); else setSync("local"); });
+})();
+</script>
+<script>if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));</script>
+</body>
+</html>
